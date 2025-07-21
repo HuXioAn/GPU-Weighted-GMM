@@ -359,7 +359,7 @@ private:
     int reduceBlockNum(int dataSize, int blockSize){
         constexpr int elementPerThread = 8; // 8 elements per thread, as the input is 10000
         if(dataSize < elementPerThread)dataSize = elementPerThread;
-        auto blockNum = internal::getGridSize(dataSize / elementPerThread, blockSize); 
+        auto blockNum = getGridSize(dataSize / elementPerThread, blockSize); 
         blockNum = blockNum > 1024 ? 1024 : blockNum;
 
         if(reductionTempArraySize < blockNum){
@@ -375,7 +375,7 @@ private:
         
         // normalize data such that velocities are in range -1;1
         // launch kernel
-        kernel::normalizePointsKernel<T,dataDim,U,false><<<internal::getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        kernel::normalizePointsKernel<T,dataDim,U,false><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr,meanDataInitCUDA, maxVelocityArray);
     }
 
@@ -383,7 +383,7 @@ private:
         
         // normalize data back to the original data range
         // launch kernel
-        kernel::normalizePointsKernel<T,dataDim,U,true><<<internal::getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        kernel::normalizePointsKernel<T,dataDim,U,true><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr, meanDataInitCUDA, maxVelocityArray );
 
         kernel::normalizeMeanAndCovBack<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>
@@ -393,7 +393,7 @@ private:
     void calcPxAtMeanAndCoVariance(){
 
         // launch kernel
-        kernel::calcLogLikelihoodForPointsKernel<<<internal::getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        kernel::calcLogLikelihoodForPointsKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr, meanCUDA, coVarianceDecomposedCUDA, posteriorCUDA, paramHostPtr->numComponents, flagActiveComponentsCUDA);
         
         // posterior_nk holds log p(x_i|mean,coVariance) for each data point i and each component k, temporary storage
@@ -401,7 +401,7 @@ private:
 
     void calcLogLikelihoodPxAndposterior(){
         // launch kernel, the first posterior_nk is the log p(x_i|mean,coVariance)
-        kernel::calcLogLikelihoodPxAndposteriorKernel<<<internal::getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+        kernel::calcLogLikelihoodPxAndposteriorKernel<<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
                                 (dataDevicePtr, weightCUDA, posteriorCUDA, tempArrayCUDA, posteriorCUDA, paramHostPtr->numComponents, flagActiveComponentsCUDA);
         
         // now the posterior_nk is the log posterior_nk
@@ -499,7 +499,7 @@ private:
 
         // calc the new coVariance for components
         kernel::updateCoVarianceKernel
-            <<<internal::getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+            <<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
             (dataDevicePtr, posteriorCUDA, PosteriorCUDA, meanCUDA, tempArrayCUDA, paramHostPtr->numComponents, flagActiveComponentsCUDA);
 
         // sum the coVariance with reduction, then divide by the Posterior_k

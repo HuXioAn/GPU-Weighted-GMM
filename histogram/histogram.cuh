@@ -221,8 +221,8 @@ public:
 
 namespace particleHistogram{
 
-using histogramTypeIn = weightedGMM::internal::cudaCommonType;
-using histogramTypeOut = weightedGMM::internal::cudaTypeSingle;
+using histogramTypeIn = cudaCommonType;
+using histogramTypeOut = cudaTypeSingle;
 
 using particleHistogramCUDA2D = histogram::histogramCUDA<histogramTypeIn, 2, histogramTypeOut>;
 using particleHistogramCUDA3D = histogram::histogramCUDA<histogramTypeIn, 3, histogramTypeOut>;
@@ -255,12 +255,12 @@ private:
     int reduceBlockNum(int dataSize, int blockSize){
         constexpr int elementsPerThread = 128;
         if(dataSize < elementsPerThread)dataSize = elementsPerThread;
-        auto blockNum = weightedGMM::internal::getGridSize(dataSize / elementsPerThread, blockSize); // 4096 elements per thread
+        auto blockNum = getGridSize(dataSize / elementsPerThread, blockSize); // 4096 elements per thread
         blockNum = blockNum > 1024 ? 1024 : blockNum;
 
         if(reductionTempArraySize < blockNum){
-            weightedGMM::cudaErrChk(cudaFree(reductionTempArrayCUDA));
-            weightedGMM::cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(histogramTypeIn)*blockNum * 6));
+            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            cudaErrChk(cudaMalloc((void**)&reductionTempArrayCUDA, sizeof(histogramTypeIn)*blockNum * 6));
             reductionTempArraySize = blockNum;
         }
 
@@ -288,14 +288,14 @@ public:
             initSize = bufferSize;
         }
 
-        histogramHostPtr = weightedGMM::internal::newHostPinnedObject<particleHistogramCUDA3D>(initSize);
-        weightedGMM::cudaErrChk(cudaMalloc(&histogramCUDAPtr, sizeof(particleHistogramCUDA3D)));
+        histogramHostPtr = newHostPinnedObject<particleHistogramCUDA3D>(initSize);
+        cudaErrChk(cudaMalloc((void**)&histogramCUDAPtr, sizeof(particleHistogramCUDA3D)));
 
 
         if constexpr (particleHistogram::config::HISTOGRAM_FIXED_RANGE == false){
             reductionTempArraySize = 1024;
-            weightedGMM::cudaErrChk(cudaMalloc(&reductionTempArrayCUDA, sizeof(histogramTypeIn)*reductionTempArraySize * 6));
-            weightedGMM::cudaErrChk(cudaMalloc(&reductionMinResultCUDA, sizeof(histogramTypeIn)*6));
+            cudaErrChk(cudaMalloc((void**)&reductionTempArrayCUDA, sizeof(histogramTypeIn)*reductionTempArraySize * 6));
+            cudaErrChk(cudaMalloc((void**)&reductionMinResultCUDA, sizeof(histogramTypeIn)*6));
             reductionMaxResultCUDA = reductionMinResultCUDA + 3;
         } 
         
@@ -323,7 +323,7 @@ public:
      */
     void copyHistogramToHost(cudaStream_t stream = 0){        
         histogramHostPtr->copyHistogramAsync(stream);
-        weightedGMM::cudaErrChk(cudaStreamSynchronize(stream));
+        cudaErrChk(cudaStreamSynchronize(stream));
     }
 
 
@@ -374,11 +374,11 @@ public:
 
     }
 
-    histogramTypeOut* getparticleHistogramHostPtr(){
+    histogramTypeOut* getParticleHistogramHostPtr(){
         return histogramHostPtr->getHistogram();
     }
 
-    histogramTypeOut* getparticleHistogramCUDAArray(){
+    histogramTypeOut* getParticleHistogramCUDAArray(){
         return histogramHostPtr->getHistogramCUDA();
     }
 
@@ -389,12 +389,12 @@ public:
 
     ~particleHistogram3D(){
         if constexpr (particleHistogram::config::HISTOGRAM_FIXED_RANGE == false){
-            weightedGMM::cudaErrChk(cudaFree(reductionTempArrayCUDA));
-            weightedGMM::cudaErrChk(cudaFree(reductionMinResultCUDA));
+            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            cudaErrChk(cudaFree(reductionMinResultCUDA));
         }
 
-        weightedGMM::cudaErrChk(cudaFree(histogramCUDAPtr));
-        weightedGMM::internal::deleteHostPinnedObject(histogramHostPtr);
+        cudaErrChk(cudaFree(histogramCUDAPtr));
+        deleteHostPinnedObject(histogramHostPtr);
     }
 };
 

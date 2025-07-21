@@ -21,10 +21,10 @@ namespace particleHistogram::config {
     inline constexpr int PARTICLE_HISTOGRAM_MAX_SMEM = 48 * 1024; // 48KB
 
     inline constexpr bool HISTOGRAM_FIXED_RANGE = true; 
-    inline constexpr weightedGMM::internal::cudaCommonType MIN_VELOCITY_HIST_E = -0.2;
-    inline constexpr weightedGMM::internal::cudaCommonType MAX_VELOCITY_HIST_E = 0.2;
-    inline constexpr weightedGMM::internal::cudaCommonType MIN_VELOCITY_HIST_I = -0.09;
-    inline constexpr weightedGMM::internal::cudaCommonType MAX_VELOCITY_HIST_I = 0.09;
+    inline constexpr cudaCommonType MIN_VELOCITY_HIST_E = -0.2;
+    inline constexpr cudaCommonType MAX_VELOCITY_HIST_E = 0.2;
+    inline constexpr cudaCommonType MIN_VELOCITY_HIST_I = -0.09;
+    inline constexpr cudaCommonType MAX_VELOCITY_HIST_I = 0.09;
 
 } // namespace particleHistogram::config
 

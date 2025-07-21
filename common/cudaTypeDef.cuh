@@ -26,7 +26,6 @@ inline constexpr uint64_t WARP_FULL_MASK = 0xFFFFFFFFFFFFFFFF;
 #include <iostream>
 #include <sstream>
 
-namespace weightedGMM::internal {
 
     using cudaTypeSingle = float;
     using cudaTypeDouble = double;
@@ -40,7 +39,7 @@ namespace weightedGMM::internal {
     #define ERROR_CHECK_C_LIKE false
 
 
-#define cudaErrChk(call) internal::cudaCheck((call), __FILE__, __LINE__)
+#define cudaErrChk(call) cudaCheck((call), __FILE__, __LINE__)
 
     __host__ inline void cudaCheck(cudaError_t code, const char *file, int line)
     {
@@ -60,7 +59,12 @@ namespace weightedGMM::internal {
 
 
     ////////////////////////////////// Pinned memory allocation
-
+    __host__ inline void* allocateHostPinnedMem(size_t typeSize, size_t num){
+        void* ptr = nullptr;
+        cudaErrChk(cudaHostAlloc(&ptr, typeSize*num, cudaHostAllocDefault));
+        return ptr;
+    }
+    
     template <typename T, typename... Args>
     T* newHostPinnedObject(Args... args){
         T* ptr = (T*)allocateHostPinnedMem(sizeof(T), 1);
@@ -80,6 +84,5 @@ namespace weightedGMM::internal {
     __host__ __device__ inline T getGridSize(T threadNum, T blockSize) {
         return ((threadNum + blockSize - 1) / blockSize);
     }
-}
 
 #endif

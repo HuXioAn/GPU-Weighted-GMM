@@ -104,10 +104,10 @@ __host__ void particleHistogram3D::init(histogramTypeIn* xArrayDevicePtr, histog
 
     getRange(xArrayDevicePtr, yArrayDevicePtr, zArrayDevicePtr, pclNum, species, stream);
     histogramHostPtr->setHistogram(minArray, maxArray, binThisDim);
-    weightedGMM::cudaErrChk(cudaMemcpyAsync(histogramCUDAPtr, histogramHostPtr, sizeof(particleHistogramCUDA3D), cudaMemcpyHostToDevice, stream));
+    cudaErrChk(cudaMemcpyAsync(histogramCUDAPtr, histogramHostPtr, sizeof(particleHistogramCUDA3D), cudaMemcpyHostToDevice, stream));
 
     const int binNum = binThisDim[0] * binThisDim[1] * binThisDim[2];
-    resetBin<<<weightedGMM::internal::getGridSize(binNum / 8, 256), 256, 0, stream>>>(histogramCUDAPtr);
+    resetBin<<<getGridSize(binNum / 8, 256), 256, 0, stream>>>(histogramCUDAPtr);
 
     // shared memory size
     constexpr int tileSize = config::PARTICLE_HISTOGRAM3D_TILE * config::PARTICLE_HISTOGRAM3D_TILE * config::PARTICLE_HISTOGRAM3D_TILE;
@@ -115,7 +115,7 @@ __host__ void particleHistogram3D::init(histogramTypeIn* xArrayDevicePtr, histog
     if constexpr (sharedMemSize > config::PARTICLE_HISTOGRAM_MAX_SMEM) throw std::runtime_error("Shared memory size exceeds the limit ...");
     if(binNum % tileSize != 0) throw std::runtime_error("Adjust histogram resolution to multiply of tile ...");
 
-    histogramKernel3D<<<weightedGMM::internal::getGridSize(pclNum / 128, 512), 512, sharedMemSize, stream>>>
+    histogramKernel3D<<<getGridSize(pclNum / 128, 512), 512, sharedMemSize, stream>>>
         (pclNum, xArrayDevicePtr, yArrayDevicePtr, zArrayDevicePtr, qArrayDevicePtr,
         histogramCUDAPtr);
 
@@ -147,9 +147,9 @@ __host__ int particleHistogram3D::getRange(histogramTypeIn* xArrayDevicePtr, his
             reduceMaxWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
                 (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
         }
-        weightedGMM::cudaErrChk(cudaMemcpyAsync(minArray, reductionMinResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
-        weightedGMM::cudaErrChk(cudaMemcpyAsync(maxArray, reductionMaxResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
-        weightedGMM::cudaErrChk(cudaStreamSynchronize(stream));
+        cudaErrChk(cudaMemcpyAsync(minArray, reductionMinResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
+        cudaErrChk(cudaMemcpyAsync(maxArray, reductionMaxResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
+        cudaErrChk(cudaStreamSynchronize(stream));
 
     }else{
         histogramTypeIn min = (species == 0 || species == 2) ? config::MIN_VELOCITY_HIST_E : config::MIN_VELOCITY_HIST_I;
