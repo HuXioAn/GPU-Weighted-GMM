@@ -1,3 +1,12 @@
+/******************************************************************************
+ * Author      : Andong Hu (hu7006@outlook.com)
+ * Affiliation : KTH Royal Institute of Technology
+ * Time        : 2024-2025
+ *
+ * Notes       : This code is developed for the iPIC3D-GPU project.
+ *              https://github.com/iPIC3D/iPIC3D-GPU
+ ******************************************************************************/
+
 #ifndef _CUDA_TYPE_DEF_H_
 #define _CUDA_TYPE_DEF_H_
 
@@ -48,6 +57,23 @@ namespace weightedGMM::internal {
         }
     }
     #undef ERROR_CHECK_C_LIKE
+
+
+    ////////////////////////////////// Pinned memory allocation
+
+    template <typename T, typename... Args>
+    T* newHostPinnedObject(Args... args){
+        T* ptr = (T*)allocateHostPinnedMem(sizeof(T), 1);
+        return new(ptr) T(std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    void deleteHostPinnedObject(T* ptr){
+        ptr->~T();
+        cudaErrChk(cudaFreeHost(ptr));
+    }
+
+
 
     ////////////////////////////////// Round up to
     template <typename T>

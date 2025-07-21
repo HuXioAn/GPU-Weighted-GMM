@@ -1,3 +1,12 @@
+/******************************************************************************
+ * Author      : Andong Hu (hu7006@outlook.com) Luca Pennati (pennati@kth.se)
+ * Affiliation : KTH Royal Institute of Technology
+ * Time        : 2024-2025
+ *
+ * Notes       : This code is developed for the iPIC3D-GPU project, for the GMM data analysis pipeline.
+ *              https://github.com/iPIC3D/iPIC3D-GPU
+ ******************************************************************************/
+
 #ifndef _CUDA_GMM_UTILITY_CUH_
 #define _CUDA_GMM_UTILITY_CUH_
 

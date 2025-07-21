@@ -1,3 +1,12 @@
+/******************************************************************************
+ * Author      : Andong Hu (hu7006@outlook.com)
+ * Affiliation : KTH Royal Institute of Technology
+ * Time        : 2024-2025
+ *
+ * Notes       : This code is developed for the iPIC3D-GPU project.
+ *              https://github.com/iPIC3D/iPIC3D-GPU
+ ******************************************************************************/
+
 #ifndef _HIPIFLY_HPP_
 #define _HIPIFLY_HPP_
 
