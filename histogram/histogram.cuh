@@ -284,7 +284,7 @@ public:
         const auto bufferSize = binThisDim[0] * binThisDim[1] * binThisDim[2];
 
         if(initSize < bufferSize){ 
-            std::cerr << "[!]Histogram initial size is too small: " << initSize << " vs " << binThisDim[0] << "x" << binThisDim[1] << std::endl;
+            std::cerr << "[!]Histogram initial size is too small: " << initSize << " vs " << binThisDim[0] << "x" << binThisDim[1] << "x" << binThisDim[0] << std::endl;
             initSize = bufferSize;
         }
 
@@ -388,6 +388,174 @@ public:
 
 
     ~particleHistogram3D(){
+        if constexpr (particleHistogram::config::HISTOGRAM_FIXED_RANGE == false){
+            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            cudaErrChk(cudaFree(reductionMinResultCUDA));
+        }
+
+        cudaErrChk(cudaFree(histogramCUDAPtr));
+        deleteHostPinnedObject(histogramHostPtr);
+    }
+};
+
+
+
+class particleHistogram2D
+{
+private:
+    // UVW
+    particleHistogramCUDA2D* histogramHostPtr;
+    particleHistogramCUDA2D* histogramCUDAPtr; 
+
+    int binThisDim[2] = {config::PARTICLE_HISTOGRAM3D_RES_1, config::PARTICLE_HISTOGRAM2D_RES_2};
+
+    int reductionTempArraySize = 0;
+    histogramTypeIn* reductionTempArrayCUDA;
+    histogramTypeIn* reductionMinResultCUDA;
+    histogramTypeIn* reductionMaxResultCUDA;
+
+    histogramTypeIn minArray[2];
+    histogramTypeIn maxArray[2];
+
+
+    bool bigEndian;
+
+    int reduceBlockNum(int dataSize, int blockSize){
+        constexpr int elementsPerThread = 128;
+        if(dataSize < elementsPerThread)dataSize = elementsPerThread;
+        auto blockNum = getGridSize(dataSize / elementsPerThread, blockSize); // 4096 elements per thread
+        blockNum = blockNum > 1024 ? 1024 : blockNum;
+
+        if(reductionTempArraySize < blockNum){
+            cudaErrChk(cudaFree(reductionTempArrayCUDA));
+            cudaErrChk(cudaMalloc((void**)&reductionTempArrayCUDA, sizeof(histogramTypeIn)*blockNum * 6));
+            reductionTempArraySize = blockNum;
+        }
+
+        return blockNum;
+    }
+
+
+    /**
+     * @brief get the Max and Min value of the given value set
+     */
+    int getRange(histogramTypeIn* xArrayDevicePtr, histogramTypeIn* yArrayDevicePtr, const int pclNum, const int species, cudaStream_t stream);
+
+public:
+
+    /**
+     * @param initSize the initial size of the histogram buffer, in elements
+     * @param path the path to store the output file, directory
+     */
+    particleHistogram2D(int initSize) {
+
+        const auto bufferSize = binThisDim[0] * binThisDim[1];
+
+        if(initSize < bufferSize){ 
+            std::cerr << "[!]Histogram initial size is too small: " << initSize << " vs " << binThisDim[0] << "x" << binThisDim[1] << std::endl;
+            initSize = bufferSize;
+        }
+
+        histogramHostPtr = newHostPinnedObject<particleHistogramCUDA2D>(initSize);
+        cudaErrChk(cudaMalloc((void**)&histogramCUDAPtr, sizeof(particleHistogramCUDA2D)));
+
+
+        if constexpr (particleHistogram::config::HISTOGRAM_FIXED_RANGE == false){
+            reductionTempArraySize = 1024;
+            cudaErrChk(cudaMalloc((void**)&reductionTempArrayCUDA, sizeof(histogramTypeIn)*reductionTempArraySize * 4));
+            cudaErrChk(cudaMalloc((void**)&reductionMinResultCUDA, sizeof(histogramTypeIn) * 4));
+            reductionMaxResultCUDA = reductionMinResultCUDA + 2;
+        } 
+        
+        { // check the endian
+            int test = 1;
+            char* ptr = reinterpret_cast<char*>(&test);
+            if (*ptr == 1) {
+                bigEndian = false;
+            } else {
+                bigEndian = true;
+            }
+        }
+    }
+
+    /**
+     * @brief Initiate the kernels for histograming, launch the kernels
+     * @details It can be invoked after Moment in the main loop, for the output and solver are on CPU
+     */
+    void init(histogramTypeIn* xArrayDevicePtr, histogramTypeIn* yArrayDevicePtr, histogramTypeIn* qArrayDevicePtr, const int pclNum, const int species, cudaStream_t stream = 0);
+
+    /**
+     * @brief Wait for the histogram data to be ready, copy the data to host
+     * @details It should be invoked after a previous Init, after this, can use getparticleHistogramCUDAArray to get the data
+     *         writeToFile has the same effect
+     */
+    void copyHistogramToHost(cudaStream_t stream = 0){        
+        histogramHostPtr->copyHistogramAsync(stream);
+        cudaErrChk(cudaStreamSynchronize(stream));
+    }
+
+
+    void writeToFile(std::string filePath, int cycleNum, cudaStream_t stream = 0){
+        copyHistogramToHost(stream);
+        
+        std::string vtkType;
+        if constexpr (std::is_same_v<histogramTypeOut, float>){
+            vtkType = "float";
+        } else if constexpr (std::is_same_v<histogramTypeOut, double>){
+            vtkType = "double";
+        } else if constexpr (std::is_same_v<histogramTypeOut, int>){
+            vtkType = "int";
+        } else {
+            throw std::runtime_error("Unsupported histogramTypeOut");
+        }
+
+        std::ostringstream ossFileName;
+        ossFileName << filePath << "2D_" << cycleNum << ".vtk";
+
+        std::ofstream vtkFile(ossFileName.str(), std::ios::binary);
+
+        vtkFile << "# vtk DataFile Version 3.0\n";
+        vtkFile << "Velocity Histogram\n";
+        vtkFile << "BINARY\n";  
+        vtkFile << "DATASET STRUCTURED_POINTS\n";
+        vtkFile << "DIMENSIONS " << histogramHostPtr->size[0] << " " << histogramHostPtr->size[1] << "\n";
+        vtkFile << "ORIGIN " << histogramHostPtr->getMin(0) << " " << histogramHostPtr->getMin(1) << "\n";
+        vtkFile << "SPACING " << histogramHostPtr->getResolution(0) << " " << histogramHostPtr->getResolution(1) << "\n";
+        vtkFile << "POINT_DATA " << histogramHostPtr->getLogicSize() << "\n";  
+        vtkFile << "SCALARS scalars " << vtkType << " 1\n";  
+        vtkFile << "LOOKUP_TABLE default\n";  
+
+        auto histogramBuffer = histogramHostPtr->getHistogram();
+        for (int j = 0; j < histogramHostPtr->getLogicSize(); j++) {
+            histogramTypeOut value = histogramBuffer[j];
+
+            if constexpr (sizeof(histogramTypeOut) == 4){
+                if(!bigEndian)*(uint32_t*)(&value) = __builtin_bswap32(*(uint32_t*)(&value));
+            } else if constexpr (sizeof(histogramTypeOut) == 8){
+                if(!bigEndian)*(uint64_t*)(&value) = __builtin_bswap64(*(uint64_t*)(&value));
+            }
+
+            vtkFile.write(reinterpret_cast<char*>(&value), sizeof(histogramTypeOut));
+        }
+
+        vtkFile.close();
+
+    }
+
+    histogramTypeOut* getParticleHistogramHostPtr(){
+        return histogramHostPtr->getHistogram();
+    }
+
+    histogramTypeOut* getParticleHistogramCUDAArray(){
+        return histogramHostPtr->getHistogramCUDA();
+    }
+
+    histogramTypeIn** getHistogramScaleMark(){
+        return histogramHostPtr->getScaleMarkCUDAPtrs();
+    }
+
+
+    ~particleHistogram2D(){
         if constexpr (particleHistogram::config::HISTOGRAM_FIXED_RANGE == false){
             cudaErrChk(cudaFree(reductionTempArrayCUDA));
             cudaErrChk(cudaFree(reductionMinResultCUDA));

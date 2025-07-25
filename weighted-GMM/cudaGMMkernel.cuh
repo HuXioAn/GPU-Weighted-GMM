@@ -314,7 +314,6 @@ __global__ void decomposeCoVarianceKernel(const T* coVariance, T* coVarianceDeco
          }
      }
  
-     // from here on it works only if dataDim == 2
      if constexpr(dataDim == 2)
      {
          // ensure symmetry in the cov-matrix 
@@ -327,6 +326,7 @@ __global__ void decomposeCoVarianceKernel(const T* coVariance, T* coVarianceDeco
              coVarianceComponent[3] = coVarianceComponent[0] * k;
          }
      }
+     // note this is not optimized
      else if constexpr(dataDim == 3)
      {
          for(int i = 0; i<dataDim; i++){

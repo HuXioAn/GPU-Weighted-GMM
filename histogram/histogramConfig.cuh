@@ -9,8 +9,11 @@ namespace particleHistogram::config {
     // Histogram configuration
 
     // For 2D
-    inline constexpr int PARTICLE_HISTOGRAM2D_RES = 200; // must be multiply of PARTICLE_HISTOGRAM_TILE
+    inline constexpr int PARTICLE_HISTOGRAM2D_RES_1 = 100; // must be multiply of PARTICLE_HISTOGRAM_TILE
+    inline constexpr int PARTICLE_HISTOGRAM2D_RES_2 = 100;
     inline constexpr int PARTICLE_HISTOGRAM2D_TILE = 100;
+    inline constexpr int PARTICLE_HISTOGRAM2D_SIZE = PARTICLE_HISTOGRAM2D_RES_1 * PARTICLE_HISTOGRAM2D_RES_2;
+
     // For 3D
     inline constexpr int PARTICLE_HISTOGRAM3D_RES_1 = 100; 
     inline constexpr int PARTICLE_HISTOGRAM3D_RES_2 = 100;

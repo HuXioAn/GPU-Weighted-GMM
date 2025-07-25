@@ -3,10 +3,7 @@
 #include <memory>
 #include <random>
 
-#include "cudaTypeDef.cuh"
 #include "histogram.cuh"
-#include "histogramConfig.cuh"
-
 
 using namespace particleHistogram;
 using namespace particleHistogram::config;
@@ -15,10 +12,10 @@ constexpr int nop = 5000000;
 
 
 int main(){
-    int histogramSize = PARTICLE_HISTOGRAM3D_SIZE;
+    int histogramSize3D = PARTICLE_HISTOGRAM3D_SIZE;
 
-    // histogram
-    particleHistogram3D histogram(histogramSize);
+    // histogram 3D test 
+    particleHistogram3D histogram(histogramSize3D);
 
     // fill the array with random data
     std::random_device rd;
@@ -61,7 +58,7 @@ int main(){
 
     // CPU 3D histogram
 
-    std::vector<cudaCommonType> cpuHist(histogramSize, 0);
+    std::vector<cudaCommonType> cpuHist(histogramSize3D, 0);
 
 
     cudaCommonType minVal = MIN_VELOCITY_HIST_E;
@@ -99,7 +96,7 @@ int main(){
     bool pass = true;
     cudaCommonType tolerance = 1e-6;
 
-    for (int i = 0; i < histogramSize; i++){
+    for (int i = 0; i < histogramSize3D; i++){
         if (std::fabs(histogramHostPtr[i] - cpuHist[i]) > tolerance){
             std::cout << "Mismatch in UV histogram at bin " << i 
                       << ": GPU = " << histogramHostPtr[i] 

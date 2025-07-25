@@ -42,49 +42,95 @@ else()
 endif()
 
 
-# testHistogram
+# testHistogram 3D
 
 set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
 
 file(
   GLOB
-  testHistogram_SRC
+  testHistogram3D_SRC
   ${test_histogram_root}/*.cu
-  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram3D.cpp
 )
 
-add_executable(testHistogram ${testHistogram_SRC})
-target_include_directories(testHistogram PRIVATE ${common_include_path} ${test_histogram_root})
+add_executable(testHistogram3D ${testHistogram3D_SRC})
+target_include_directories(testHistogram3D PRIVATE ${common_include_path} ${test_histogram_root})
 if(HIP_ON)
-    target_compile_definitions(testHistogram PUBLIC HIPIFLY)
+    target_compile_definitions(testHistogram3D PUBLIC HIPIFLY)
 endif()
 
 if(NOT HIP_ON) # CUDA
 
-  set_target_properties(testHistogram PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testHistogram PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testHistogram PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testHistogram PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testHistogram PROPERTY LINK_OPTIONS -fno-lto)
+  set_target_properties(testHistogram3D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET testHistogram3D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+  set_property(TARGET testHistogram3D PROPERTY CUDA_STANDARD 17)
+  set_property(TARGET testHistogram3D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set_property(TARGET testHistogram3D PROPERTY LINK_OPTIONS -fno-lto)
 
 else() # HIP
 
-  target_link_libraries(testHistogram PRIVATE hip::device)
-  target_link_libraries(testHistogram PRIVATE hip::host)
+  target_link_libraries(testHistogram3D PRIVATE hip::device)
+  target_link_libraries(testHistogram3D PRIVATE hip::host)
 
-  target_compile_options(testHistogram PUBLIC -fgpu-rdc)
-  target_link_options(testHistogram PUBLIC  -fgpu-rdc --hip-link)
+  target_compile_options(testHistogram3D PUBLIC -fgpu-rdc)
+  target_link_options(testHistogram3D PUBLIC  -fgpu-rdc --hip-link)
 
-  set_property(TARGET testHistogram PROPERTY HIP_ARCHITECTURES gfx90a)
+  set_property(TARGET testHistogram3D PROPERTY HIP_ARCHITECTURES gfx90a)
 
 endif()
 
 
 add_test(
-  NAME testHistogram
-  COMMAND testHistogram
+  NAME testHistogram3D
+  COMMAND testHistogram3D
 )
-set_tests_properties(testHistogram PROPERTIES TIMEOUT 10)
+set_tests_properties(testHistogram3D PROPERTIES TIMEOUT 10)
+
+
+
+# testHistogram 2D
+
+set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
+
+file(
+  GLOB
+  testHistogram2D_SRC
+  ${test_histogram_root}/*.cu
+  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram2D.cpp
+)
+
+add_executable(testHistogram2D ${testHistogram2D_SRC})
+target_include_directories(testHistogram2D PRIVATE ${common_include_path} ${test_histogram_root})
+if(HIP_ON)
+    target_compile_definitions(testHistogram2D PUBLIC HIPIFLY)
+endif()
+
+if(NOT HIP_ON) # CUDA
+
+  set_target_properties(testHistogram2D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET testHistogram2D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+  set_property(TARGET testHistogram2D PROPERTY CUDA_STANDARD 17)
+  set_property(TARGET testHistogram2D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set_property(TARGET testHistogram2D PROPERTY LINK_OPTIONS -fno-lto)
+
+else() # HIP
+
+  target_link_libraries(testHistogram2D PRIVATE hip::device)
+  target_link_libraries(testHistogram2D PRIVATE hip::host)
+
+  target_compile_options(testHistogram2D PUBLIC -fgpu-rdc)
+  target_link_options(testHistogram2D PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET testHistogram2D PROPERTY HIP_ARCHITECTURES gfx90a)
+
+endif()
+
+
+add_test(
+  NAME testHistogram2D
+  COMMAND testHistogram2D
+)
+set_tests_properties(testHistogram2D PROPERTIES TIMEOUT 10)
 
 
 # testGMM
@@ -134,7 +180,7 @@ set_tests_properties(testGMM PROPERTIES TIMEOUT 10)
 
 # # testPipeline
 
-# add_executable(testPipeline ${testHistogram_SRC} ${testGMM_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/testPipeline.cpp)
+# add_executable(testPipeline ${testHistogram3D_SRC} ${testGMM_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/testPipeline.cpp)
 # target_include_directories(testPipeline PRIVATE ${common_include_path} ${test_histogram_root} ${test_gmm_root})
 # if(HIP_ON)
 #     target_compile_definitions(testPipeline PUBLIC HIPIFLY)
