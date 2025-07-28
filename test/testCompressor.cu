@@ -5,14 +5,27 @@
 
 #include "histGMMCompressor.cuh"
 
+/**
+ * Example of how to use the hist+GMM compression pipeline to compress raw particle data
+ * In this test particles are sampled from N 2D gaussians
+ * The 
+ */
+
+
 using DataType = cudaCommonType;
 using Vec  = std::vector<DataType>;
-using Mat  = std::vector<Vec>;  // row‑major
+using Mat  = std::vector<Vec>;
 
-constexpr int nSample = 100000;
+// data dimension
 constexpr int DIM = 2;
+// number of particles for each gaussian component
+constexpr int nSample = 5000000;
 
-// Compute lower‑triangular L such that A = L * Lᵀ
+
+/**
+ * Cholesky decomposition
+ * Compute lower‑triangular L such that A = L * Lᵀ
+ */
 bool cholesky(const Mat& A, Mat& L) {
     int N = A.size();
     L.assign(N, Vec(N, 0.0));
@@ -23,7 +36,7 @@ bool cholesky(const Mat& A, Mat& L) {
                 sum += L[i][k] * L[j][k];
             if(i == j) {
                 DataType diag = A[i][i] - sum;
-                if(diag <= 0) return false;  // not PD
+                if(diag <= 0) return false;  // not Positive definite
                 L[i][j] = std::sqrt(diag);
             } else {
                 L[i][j] = (A[i][j] - sum) / L[j][j];
@@ -49,23 +62,29 @@ int main() {
     // RNG setup
     std::mt19937 rng(std::random_device{}());
     std::normal_distribution<DataType> dist(0.0, 1.0);
-    const int NGaussians = 4;
-    std::vector<Vec> mu    = { {0.3, 0.2}, {0.4,-0.1}, {-0.1,-0.2}, {0.3,0.6} };
-    std::vector<Mat> Sigma = {{{0.06, 0.01},
-                               {0.01, 0.02}},
-                              {{0.05, 0.0},
-                               {0.0, 0.03}},
-                              {{0.007, 0.0002},
-                               {0.01, 0.05}},
-                               {{0.009, 0.0},
-                               {0.0, 0.02}}
-                            };
 
+    // set number of gaussian
+    const int NGaussians = 3;
+    // set gaussian mean
+    std::vector<Vec> mu    = { {0.4, 0.3}, {0.1,-0.3}, {-0.3, 0.05}};
+    // set gaussian cov matrix, row major order
+    std::vector<Mat> Sigma = {{{0.002, 0.0001},
+                               {0.0001, 0.003}},
+                              {{0.002, 0.0},
+                               {0.0, 0.003}},
+                              {{0.001, 0.000},
+                               {0.000, 0.005}}
+                            };
+    
+    // set cpu data structures
+    // nop = total number of particles
     const int nop = nSample * NGaussians;
     auto uCPU = new (std::align_val_t(64))DataType[nop];
     auto vCPU = new (std::align_val_t(64))DataType[nop];
     auto qCPU = new (std::align_val_t(64))DataType[nop];
 
+    // sample data from the N gaussians
+    // sample nSample from each gaussian --> each gaussian has same weight = 1 / Ngaussians
     for(int i = 0; i< NGaussians; i++){
         Mat L;
         assert(cholesky(Sigma[i], L) && "Covariance not PD!");
@@ -81,21 +100,19 @@ int main() {
                 for(int k = 0; k < DIM; ++k){
                     x[k] += mu[i][k];
                 }
-                if ( x[0] > -1.0 && x[0] < 1.0 && x[1] > -1.0 && x[1] < 1.0 ){
+                //if ( x[0] > -1.0 && x[0] < 1.0 && x[1] > -1.0 && x[1] < 1.0 ){
                     sample = false;
                     uCPU[j + i*nSample] = x[0];
                     vCPU[j + i*nSample] = x[1];
                     qCPU[j + i*nSample] = 1e-6;
-                }
+                //}
             }
         }
     }
 
-    // histogram CPU
+    // create the histogram on the cpu to use as reference
     const int histogramSize2D = particleHistogram::config::PARTICLE_HISTOGRAM2D_RES_1 * particleHistogram::config::PARTICLE_HISTOGRAM2D_RES_2;
-    
     std::vector<cudaCommonType> cpuHist(histogramSize2D, 0);
-
     cudaCommonType minVal = particleHistogram::config::MIN_VELOCITY_HIST_E;
     cudaCommonType maxVal = particleHistogram::config::MAX_VELOCITY_HIST_E;
     cudaCommonType resolution1 = (maxVal - minVal) / particleHistogram::config::PARTICLE_HISTOGRAM2D_RES_1;
@@ -116,7 +133,7 @@ int main() {
 
     }
 
-    // copy data to GPU
+    // copy data to GPU to run the hist-GMM compressor
 
     DataType* uPtr;
     DataType* vPtr;
@@ -131,23 +148,29 @@ int main() {
     cudaErrChk(cudaMemcpy(qPtr, qCPU, nop * sizeof(DataType), cudaMemcpyHostToDevice));
 
 
-    // x now ~ N(mu, Sigma)
-    const int nComponentGMM = 4;
+    // create the compressor from the histogramGMMCompressor::HistGMMCompressor class
+    const int nComponentGMM = NGaussians;
     const int maxIterGMM = 200;
     const DataType thresholdGMM = 1e-3;
     histogramGMMCompressor::HistGMMCompressor<DataType,2,true,cudaTypeSingle> compressor(histogramSize2D,nComponentGMM,maxIterGMM,thresholdGMM);
-    compressor.runHistogram(uPtr, vPtr, qPtr, nSample * NGaussians , 0, 0);
+    
+    // run compression pipeline hist+GMM
+    compressor.runCompression(uPtr, vPtr, qPtr, nSample * NGaussians , 0, 0);
 
-    cudaErrChk(cudaDeviceSynchronize());
+    // write result GMM --> check manually if mean, weight and cov matrix match the input data
+    std::string outputFileGMM = "testCompressorGMM.out";
+    compressor.writeResultGMM(outputFileGMM);
 
-    auto* histogram = compressor.getParticleHistogramPtr();
-    histogram->copyHistogramToHost();
-    auto histogramHostPtr = histogram->getParticleHistogramHostPtr();
-
-    // compare the results
+    // get histogram objecy from the compressor
+    //auto* histogram = compressor.getParticleHistogramPtr();
+    // copy histogram data to the host
+    //histogram->copyHistogramToHost();
+    // retrieve histogram data on the host
+    //auto histogramHostPtr = histogram->getParticleHistogramHostPtr();
+    auto histogramHostPtr = compressor.getHistogramOutputHostPtr();
+    // compare the results cpuHist - histogramHostPtr
     bool pass = true;
-    cudaCommonType tolerance = 1e-1;
-
+    cudaCommonType tolerance = 1e-2;
     for (int i = 0; i < histogramSize2D; i++){
         if (std::fabs(histogramHostPtr[i] - cpuHist[i]) > tolerance){
             std::cout << "Mismatch in UV histogram at bin " << i 
@@ -172,8 +195,5 @@ int main() {
     cudaErrChk(cudaFree(vPtr));
     cudaErrChk(cudaFree(qPtr));
 
-    
-    compressor.runCompression(uPtr, vPtr, qPtr, nSample * NGaussians , 0, 0);
-    compressor.writeResultGMM("test");
     return 0;
 }
