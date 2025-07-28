@@ -19,10 +19,12 @@ A C++ library implementing histogramming and Gaussian Mixture Model (GMM) data c
 - **weighted-GMM:** Defines the weighted-GMM class.
 - **histogram-GMM-compressor:** Implements the full histogram + GMM compression pipeline.
 - **test:** Example applications demonstrating usage of the histogram, GMM, and compressor classes.
+- **hipifly:** Defines preprocessor macros to convert the CUDA API calls to HIP calls.
 
 
 ## Requirements
-
+- **CMAKE:** minimum version 3.21
+- **c++:** minimum 17
 - **GPU Backend:** CUDA or HIP/ROCm support required.
 - **Dependencies:** None beyond the GPU platform SDK.
 
@@ -49,8 +51,8 @@ make
 
 ## Usage
 
-1. Copy the library folders (`common`, `histogram`, `weighted-GMM`, `histogram-GMM-compressor`) into your code source directory.
-2. Add the necessary `add_subdirectory` or include paths in your `CMakeLists.txt`, referencing the examples in the `test` folder.
+1. Copy the library folders (`common`, `hipifly`, `histogram`, `weighted-GMM`, `histogram-GMM-compressor`) into your code source directory.
+2. Add the general settings and `HIP_ON` option in your `CMakeLists.txt` referencing the `CMakeLists.txt` example in the `test`.  Add the necessary `add_subdirectory` or include paths in your `CMakeLists.txt`, referencing the examples in the `test` folder. 
 3. Configure and build using CMake as shown above.
 
 ## Citation
