@@ -82,7 +82,6 @@ int main(){
 
             cpuHist[bin1 + bin2 * PARTICLE_HISTOGRAM3D_RES_1 + bin3 * PARTICLE_HISTOGRAM3D_RES_1 * PARTICLE_HISTOGRAM3D_RES_2] += std::abs(qCPU[i] * 1e7); // 10e6 in the kernel 
         }
-
     }
 
     // GPU histogram

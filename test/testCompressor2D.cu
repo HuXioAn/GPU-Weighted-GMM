@@ -19,7 +19,7 @@ using Mat  = std::vector<Vec>;
 // data dimension
 constexpr int DIM = 2;
 // number of particles for each gaussian component
-constexpr int nSample = 5000000;
+constexpr int nSample = 2000000;
 
 
 /**
@@ -158,16 +158,12 @@ int main() {
     compressor.runCompression(uPtr, vPtr, qPtr, nSample * NGaussians , 0, 0);
 
     // write result GMM --> check manually if mean, weight and cov matrix match the input data
-    std::string outputFileGMM = "testCompressorGMM.out";
+    std::string outputFileGMM = "testCompressor2DGMM.out";
     compressor.writeResultGMM(outputFileGMM);
 
     // get histogram objecy from the compressor
-    //auto* histogram = compressor.getParticleHistogramPtr();
-    // copy histogram data to the host
-    //histogram->copyHistogramToHost();
-    // retrieve histogram data on the host
-    //auto histogramHostPtr = histogram->getParticleHistogramHostPtr();
     auto histogramHostPtr = compressor.getHistogramOutputHostPtr();
+    
     // compare the results cpuHist - histogramHostPtr
     bool pass = true;
     cudaCommonType tolerance = 1e-2;

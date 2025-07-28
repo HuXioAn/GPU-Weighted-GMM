@@ -177,49 +177,95 @@ set_tests_properties(testGMM PROPERTIES TIMEOUT 10)
 
 
 
-# testCompressor
+# testCompressor 2D
 
 set(test_compressor_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram-GMM-compressor)
 
 file(
   GLOB
-  testCompressor_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor.cu
+  testCompressor2D_SRC
+  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor2D.cu
 )
 
-add_executable(testCompressor ${testCompressor_SRC})
-target_include_directories(testCompressor PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
+add_executable(testCompressor2D ${testCompressor2D_SRC})
+target_include_directories(testCompressor2D PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
 if(HIP_ON)
-    target_compile_definitions(testCompressor PUBLIC HIPIFLY)
+    target_compile_definitions(testCompressor2D PUBLIC HIPIFLY)
 endif()
 
 
 if(NOT HIP_ON) # CUDA
 
-  set_target_properties(testCompressor PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testCompressor PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testCompressor PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testCompressor PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testCompressor PROPERTY LINK_OPTIONS -fno-lto)
+  set_target_properties(testCompressor2D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET testCompressor2D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+  set_property(TARGET testCompressor2D PROPERTY CUDA_STANDARD 17)
+  set_property(TARGET testCompressor2D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set_property(TARGET testCompressor2D PROPERTY LINK_OPTIONS -fno-lto)
 
 else() # HIP
 
-  target_link_libraries(testCompressor PRIVATE hip::device)
-  target_link_libraries(testCompressor PRIVATE hip::host)
+  target_link_libraries(testCompressor2D PRIVATE hip::device)
+  target_link_libraries(testCompressor2D PRIVATE hip::host)
 
-  target_compile_options(testCompressor PUBLIC -fgpu-rdc)
-  target_link_options(testCompressor PUBLIC  -fgpu-rdc --hip-link)
+  target_compile_options(testCompressor2D PUBLIC -fgpu-rdc)
+  target_link_options(testCompressor2D PUBLIC  -fgpu-rdc --hip-link)
 
-  set_property(TARGET testCompressor PROPERTY HIP_ARCHITECTURES gfx90a)
+  set_property(TARGET testCompressor2D PROPERTY HIP_ARCHITECTURES gfx90a)
 
 endif()
 
 
 add_test(
-  NAME testCompressor
-  COMMAND testCompressor
+  NAME testCompressor2D
+  COMMAND testCompressor2D
 )
-set_tests_properties(testCompressor PROPERTIES TIMEOUT 10)
+set_tests_properties(testCompressor2D PROPERTIES TIMEOUT 10)
+
+
+
+# testCompressor 3D
+
+set(test_compressor_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram-GMM-compressor)
+
+file(
+  GLOB
+  testCompressor3D_SRC
+  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor3D.cu
+)
+
+add_executable(testCompressor3D ${testCompressor3D_SRC})
+target_include_directories(testCompressor3D PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
+if(HIP_ON)
+    target_compile_definitions(testCompressor3D PUBLIC HIPIFLY)
+endif()
+
+
+if(NOT HIP_ON) # CUDA
+
+  set_target_properties(testCompressor3D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET testCompressor3D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+  set_property(TARGET testCompressor3D PROPERTY CUDA_STANDARD 17)
+  set_property(TARGET testCompressor3D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set_property(TARGET testCompressor3D PROPERTY LINK_OPTIONS -fno-lto)
+
+else() # HIP
+
+  target_link_libraries(testCompressor3D PRIVATE hip::device)
+  target_link_libraries(testCompressor3D PRIVATE hip::host)
+
+  target_compile_options(testCompressor3D PUBLIC -fgpu-rdc)
+  target_link_options(testCompressor3D PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET testCompressor3D PROPERTY HIP_ARCHITECTURES gfx90a)
+
+endif()
+
+
+add_test(
+  NAME testCompressor3D
+  COMMAND testCompressor3D
+)
+set_tests_properties(testCompressor3D PROPERTIES TIMEOUT 10)
 
 
 # # testPipeline
