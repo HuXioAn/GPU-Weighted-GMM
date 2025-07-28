@@ -114,6 +114,7 @@ public:
      */
     __host__ void setGMMInitialParameters()
     {
+        // maximum particle velocity
         const DataType maxVelocity = 1;
 
         // chose between fixed or random initialization

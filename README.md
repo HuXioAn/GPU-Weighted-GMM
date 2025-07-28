@@ -52,8 +52,10 @@ make
 ## Usage
 
 1. Copy the library folders (`common`, `hipifly`, `histogram`, `weighted-GMM`, `histogram-GMM-compressor`) into your code source directory.
-2. Add the general settings and `HIP_ON` option in your `CMakeLists.txt` referencing the `CMakeLists.txt` example in the `test`.  Add the necessary `add_subdirectory` or include paths in your `CMakeLists.txt`, referencing the examples in the `test` folder. 
-3. Configure and build using CMake as shown above.
+2. Add the general settings and `HIP_ON` option in your `CMakeLists.txt` referencing the `CMakeLists.txt` example in the `test`.  Add the necessary `add_subdirectory` or include paths in your `CMakeLists.txt`, referencing the examples in the `test` folder.
+3. Set the compile time configuration options in the `histogramConfig.cuh` and `GMMConfig.cuh` files.
+4. If using the `HistGMMCompressor` class, adjust the GMM initializaton in the `HistGMMCompressor::setGMMInitialParameters()` function.
+4. Configure and build using CMake as shown above.
 
 ## Citation
 
