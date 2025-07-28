@@ -241,7 +241,12 @@ public:
                 step > 5 is required to reach convergence for simulation at time step 0, when particle distribution functions are exactly gaussians, 
                 otherwise GMM exits after 2-3 iterations without reaching correct convergence (probably there's local minimum)
                 */
-                if( std::isnan(logLikelihood) || ( ( fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld ) && step > 5 ) ){
+                if(std::isnan(logLikelihood)){
+                    std::cerr << "logLikelihood is NaN at step " << step << std::endl;
+                    thresholdLH = true;
+                    break;
+                }
+                if( ( ( fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld ) && step > 5 ) ){
                     // std::cout << "Converged at step " << step << std::endl;
                     thresholdLH = true;
                     break;
