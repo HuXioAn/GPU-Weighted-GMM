@@ -49,8 +49,7 @@ set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
 file(
   GLOB
   testHistogram3D_SRC
-  ${test_histogram_root}/*.cu
-  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram3D.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram3D.cu
 )
 
 add_executable(testHistogram3D ${testHistogram3D_SRC})
@@ -95,8 +94,7 @@ set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
 file(
   GLOB
   testHistogram2D_SRC
-  ${test_histogram_root}/*.cu
-  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram2D.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram2D.cu
 )
 
 add_executable(testHistogram2D ${testHistogram2D_SRC})
@@ -178,9 +176,55 @@ add_test(
 set_tests_properties(testGMM PROPERTIES TIMEOUT 10)
 
 
+
+# testCompressor
+
+set(test_compressor_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram-GMM-compressor)
+
+file(
+  GLOB
+  testCompressor_SRC
+  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor.cu
+)
+
+add_executable(testCompressor ${testCompressor_SRC})
+target_include_directories(testCompressor PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
+if(HIP_ON)
+    target_compile_definitions(testCompressor PUBLIC HIPIFLY)
+endif()
+
+
+if(NOT HIP_ON) # CUDA
+
+  set_target_properties(testCompressor PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  set_property(TARGET testCompressor PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+  set_property(TARGET testCompressor PROPERTY CUDA_STANDARD 17)
+  set_property(TARGET testCompressor PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+  set_property(TARGET testCompressor PROPERTY LINK_OPTIONS -fno-lto)
+
+else() # HIP
+
+  target_link_libraries(testCompressor PRIVATE hip::device)
+  target_link_libraries(testCompressor PRIVATE hip::host)
+
+  target_compile_options(testCompressor PUBLIC -fgpu-rdc)
+  target_link_options(testCompressor PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET testCompressor PROPERTY HIP_ARCHITECTURES gfx90a)
+
+endif()
+
+
+add_test(
+  NAME testCompressor
+  COMMAND testCompressor
+)
+set_tests_properties(testCompressor PROPERTIES TIMEOUT 10)
+
+
 # # testPipeline
 
-# add_executable(testPipeline ${testHistogram3D_SRC} ${testGMM_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/testPipeline.cpp)
+# add_executable(testPipeline ${testHistogram3D_SRC} ${testCompressor_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/testPipeline.cpp)
 # target_include_directories(testPipeline PRIVATE ${common_include_path} ${test_histogram_root} ${test_gmm_root})
 # if(HIP_ON)
 #     target_compile_definitions(testPipeline PUBLIC HIPIFLY)

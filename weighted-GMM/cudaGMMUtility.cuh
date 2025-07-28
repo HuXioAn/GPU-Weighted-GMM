@@ -31,11 +31,13 @@ class GMMDataMultiDim{
 private:
     int dim = dataDim;
     int numData;
-    T* data[dataDim]; // pointers to the dimensions of the data points
+    T* data[dataDim]; // pointers to the initial element of the data points in each dimension
     U* weight;
 public:
 
     // all dim in one array
+    // data has size = numData * dataDim, it must be structured as follow [x₀, x₁, …, xₙ₋₁,   y₀, y₁, …, yₙ₋₁,   z₀, z₁, …, zₙ₋₁]
+    // weight has size = numData
     __host__ GMMDataMultiDim(int numData, T* data, U* weight){ 
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){

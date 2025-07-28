@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "cudaGMM.cuh"
+#include "cudaGMMUtility.cuh"
 
 using Vec3 = std::array<double, 3>;
 
@@ -97,28 +98,33 @@ int main() {
         0.0, 0.0, 0.005
     };
 
+    std::vector<weightedGMM::GMMResult<double, 3>> resultArray;
 
+    for(int i = 0; i < 10; i++){
 
-    weightedGMM::GMMParam_t<double> GMMParam = {
-        .numComponents = 3,
-        .maxIteration = 300,
-        .threshold = 10e-3,
-        .weightInit = weightArray,
-        .meanInit = meanArray,
-        .coVarianceInit = coVarianceMatrix
-    };
+        weightedGMM::GMMParam_t<double> GMMParam = {
+            .numComponents = 3,
+            .maxIteration = 300,
+            .threshold = 10e-3,
+            .weightInit = weightArray,
+            .meanInit = meanArray,
+            .coVarianceInit = coVarianceMatrix
+        };
 
-    auto GMMData = weightedGMM::GMMDataMultiDim<double, 3, double>(nPoints, dataPtr, d_weight);
+        auto GMMData = weightedGMM::GMMDataMultiDim<double, 3, double>(nPoints, dataPtr, d_weight);
 
-    gmm.config(&GMMParam, &GMMData);
+        gmm.config(&GMMParam, &GMMData);
 
-    // gmm.preProcessDataGMM(meanArray, maxVelocityArray);
+        // gmm.preProcessDataGMM(meanArray, maxVelocityArray);
 
-    auto convergStep = gmm.initGMM();
+        auto convergStep = gmm.initGMM();
 
-    auto result = gmm.getGMMResult(0, convergStep);
+        resultArray.push_back( gmm.getGMMResult(i, convergStep) );
 
-    std::cout << "GMM converged in " << convergStep << " steps.\n";
+        std::cout << "GMM converged in " << convergStep << " steps.\n";
+    }
+    resultArray[0].outputResultArray(resultArray,"resultArray");
+    auto result = gmm.getGMMResult(0, 1);
     std::cout << "Weights: ";
     for (int i = 0; i < result.numComponents; ++i) {
         std::cout << result.weight[i] << " ";
