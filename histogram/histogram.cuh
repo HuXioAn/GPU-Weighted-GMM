@@ -410,7 +410,7 @@ private:
     particleHistogramCUDA2D* histogramHostPtr;
     particleHistogramCUDA2D* histogramCUDAPtr; 
 
-    int binThisDim[2] = {config::PARTICLE_HISTOGRAM3D_RES_1, config::PARTICLE_HISTOGRAM2D_RES_2};
+    int binThisDim[2] = {config::PARTICLE_HISTOGRAM2D_RES_1, config::PARTICLE_HISTOGRAM2D_RES_2};
 
     int reductionTempArraySize = 0;
     histogramTypeIn* reductionTempArrayCUDA;
