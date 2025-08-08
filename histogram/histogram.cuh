@@ -77,6 +77,9 @@ public:
         if(bufferSize < logicSize){
             cudaErrChk(cudaFreeHost(hostPtr));
             cudaErrChk(cudaFree(cudaPtr));
+            for(int i=0; i<dim; i++){
+                cudaErrChk(cudaFree(scaleMark[i]));
+            }
             bufferSize = logicSize;
             allocate();
         }
