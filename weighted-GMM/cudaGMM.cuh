@@ -246,6 +246,11 @@ public:
                     thresholdLH = true;
                     break;
                 }
+                else if (std::isinf(logLikelihood)){
+                    std::cerr << "logLikelihood is inf at step " << step << std::endl;
+                    thresholdLH = true;
+                    break;
+                }
                 if( ( ( fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld ) && step > 5 ) ){
                     // std::cout << "Converged at step " << step << std::endl;
                     thresholdLH = true;

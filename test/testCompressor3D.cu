@@ -175,6 +175,8 @@ int main() {
     std::string outputFileGMM = "testCompressor3DGMM.out";
     compressor.writeResultGMM(outputFileGMM);
 
+    std::cout << " GMM compressor output: \n" << compressor.getLastResultGMM().outputString() << std::endl;
+
     // get histogram objecy from the compressor
     auto histogramHostPtr = compressor.getHistogramOutputHostPtr();
     

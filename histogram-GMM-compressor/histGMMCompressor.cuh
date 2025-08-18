@@ -46,6 +46,8 @@ private:
     std::unique_ptr<weightedGMM::GMM<DataType, DIM, WeightType>> gmm_;
     std::vector<weightedGMM::GMMResult<DataType, DIM>> gmmResultArray_;
 
+    weightedGMM::GMMParam_t<DataType> GMMParam_;
+
     const int numData_ =  DefaultNumData<DIM>::value;
     const int numComponentGMM_;
     const int maxIterationGMM_;
@@ -74,7 +76,7 @@ public:
         particleHistogram_(std::make_unique<particleHistogram::ParticleHistogram<DIM>>(histInitSize)),
         gmm_(std::make_unique<weightedGMM::GMM<DataType, DIM, WeightType>>() ),
         numComponentGMM_(numComponentGMM),
-        maxIterationGMM_(maxIterationGMM_),
+        maxIterationGMM_(maxIterationGMM),
         thresholdGMM_(thresholdGMM),
         rng_(std::random_device{}()),
         uni01_(DataType(0), DataType(1)),
@@ -158,7 +160,13 @@ public:
             }
 
         }
-        
+
+        GMMParam_.numComponents = numComponentGMM_;
+        GMMParam_.maxIteration = maxIterationGMM_;
+        GMMParam_.threshold = thresholdGMM_;
+        GMMParam_.weightInit = weightInit_.data();
+        GMMParam_.meanInit = meanInit_.data();
+        GMMParam_.coVarianceInit = coVarianceInit_.data();        
     }
 
     /**
@@ -185,26 +193,20 @@ public:
             std::cerr<< "qArrayDevicePtr is nullptr" <<std::endl;
             std::exit(EXIT_FAILURE);
         }
+        
         runHistogram(xArrayDevicePtr, yArrayDevicePtr, qArrayDevicePtr, pclNum, species, stream);
+        
         setGMMInitialParameters();
-        weightedGMM::GMMParam_t<DataType> GMMParam = {
-            .numComponents = numComponentGMM_,
-            .maxIteration = maxIterationGMM_,
-            .threshold = thresholdGMM_,
-            .weightInit = weightInit_.data(),
-            .meanInit = meanInit_.data(),
-            .coVarianceInit = coVarianceInit_.data()
-        };
 
         auto GMMData = weightedGMM::GMMDataMultiDim<DataType, DIM, WeightType>(numData_, particleHistogram_->getHistogramScaleMark(), particleHistogram_->getParticleHistogramCUDAArray());
         DataType maxVelocity[2] = {1.0,1.0};
         DataType meanData[2] = {0.0,0.0};
-        gmm_->config(&GMMParam, &GMMData);
+        gmm_->config(&GMMParam_, &GMMData);
         gmm_->preProcessDataGMM(meanData,maxVelocity);
         convergStepLastGMM_ = gmm_->initGMM();
         gmm_->postProcessDataGMM(maxVelocity);
         simulationStepLast_ = simulationStep;
-        if constexpr (storeGMMresultArray) {gmmResultArray_.push_back( gmm_->getGMMResult(simulationStep, convergStepLastGMM_) );}
+        if constexpr (storeGMMresultArray) {gmmResultArray_.push_back( gmm_->getGMMResult(simulationStepLast_, convergStepLastGMM_) );}
 
     }
 
@@ -241,25 +243,16 @@ public:
         runHistogram(xArrayDevicePtr, yArrayDevicePtr, zArrayDevicePtr, qArrayDevicePtr, pclNum, species, stream);
                
         setGMMInitialParameters();
-        weightedGMM::GMMParam_t<DataType> GMMParam = {
-            .numComponents = numComponentGMM_,
-            .maxIteration = maxIterationGMM_,
-            .threshold = thresholdGMM_,
-            .weightInit = weightInit_.data(),
-            .meanInit = meanInit_.data(),
-            .coVarianceInit = coVarianceInit_.data()
-        };
 
         auto GMMData = weightedGMM::GMMDataMultiDim<DataType, DIM, WeightType>(numData_, particleHistogram_->getHistogramScaleMark(), particleHistogram_->getParticleHistogramCUDAArray());
         DataType maxVelocity[3] = {1.0,1.0,1.0};
         DataType meanData[3] = {0.0,0.0,0.0};
-        gmm_->config(&GMMParam, &GMMData);
+        gmm_->config(&GMMParam_, &GMMData);
         gmm_->preProcessDataGMM(meanData,maxVelocity);
         convergStepLastGMM_ = gmm_->initGMM();
         gmm_->postProcessDataGMM(maxVelocity);
         simulationStepLast_ = simulationStep;
-        if constexpr (storeGMMresultArray) {gmmResultArray_.push_back( gmm_->getGMMResult(simulationStep, convergStepLastGMM_) );}
-
+        if constexpr (storeGMMresultArray) {gmmResultArray_.push_back( gmm_->getGMMResult(simulationStepLast_, convergStepLastGMM_) );}
     }
 
 
