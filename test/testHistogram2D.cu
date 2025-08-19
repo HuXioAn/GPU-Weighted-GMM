@@ -85,9 +85,10 @@ int main(){
 
     // compare the results
     bool pass = true;
-    cudaCommonType tolerance = 1e-1;
+    cudaCommonType tolerance = 1e-4;
 
     for (int i = 0; i < histogramSize2D; i++){
+        //std::cout<< " histogramHostPtr["<<  i <<"] " << histogramHostPtr[i] << " cpuHist["<<  i <<"] " << cpuHist[i] <<std::endl;
         if (std::fabs(histogramHostPtr[i] - cpuHist[i]) > tolerance){
             std::cout << "Mismatch in UV histogram at bin " << i 
                       << ": GPU = " << histogramHostPtr[i] 
