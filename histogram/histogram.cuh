@@ -439,7 +439,7 @@ public:
         if constexpr (sharedMemSize > config::PARTICLE_HISTOGRAM_MAX_SMEM) throw std::runtime_error("Shared memory size exceeds the limit ...");
         if(binNum % tileSize != 0) throw std::runtime_error("Adjust histogram resolution to multiply of tile ...");
 
-        const int threads = pclNum < 128 ? 128 : (pclNum / 128);
+        const int threads = (pclNum + 127) / 128;
         histogramKernel2D<histogramTypeIn,histogramTypeOut,particleHistogramCUDA><<<getGridSize(threads, 512), 512, sharedMemSize, stream>>>
             (pclNum, xArrayDevicePtr, yArrayDevicePtr, qArrayDevicePtr, histogramCUDAPtr);
 
@@ -462,7 +462,7 @@ public:
         if constexpr (sharedMemSize > config::PARTICLE_HISTOGRAM_MAX_SMEM) throw std::runtime_error("Shared memory size exceeds the limit ...");
         if(binNum % tileSize != 0) throw std::runtime_error("Adjust histogram resolution to multiply of tile ...");
 
-        const int threads = pclNum < 128 ? 128 : (pclNum / 128);  
+        const int threads = (pclNum + 127) / 128;  
         histogramKernel3D<histogramTypeIn,histogramTypeOut,particleHistogramCUDA><<<getGridSize(threads, 512), 512, sharedMemSize, stream>>>
             (pclNum, xArrayDevicePtr, yArrayDevicePtr, zArrayDevicePtr, qArrayDevicePtr, histogramCUDAPtr);
     }
