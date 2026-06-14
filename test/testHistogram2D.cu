@@ -15,7 +15,7 @@ int main(){
     int histogramSize2D = PARTICLE_HISTOGRAM2D_SIZE;
 
     // histogram 2D test 
-    ParticleHistogram<2> histogram(histogramSize2D);
+    ParticleHistogram<2> histogram;
 
     // fill the array with random data
     std::random_device rd;

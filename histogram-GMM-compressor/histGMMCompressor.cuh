@@ -1,7 +1,8 @@
 #include <string>
 #include <memory>
+#include <cmath>
 #include <random>
-#include <random>
+#include <stdexcept>
 #include <vector>
 
 #include "histogram.cuh"
@@ -27,6 +28,22 @@ struct DefaultNumData {
 };
 template<int DIM>
 constexpr int DefaultNumData<DIM>::value;
+
+
+/**
+ * @brief User-provided GMM initialization values for HistGMMCompressor.
+ *
+ * Arrays use the same layout as weightedGMM::GMMParam_t:
+ * - weight: numComponents values
+ * - mean: numComponents * DIM values, component-major
+ * - coVariance: numComponents * DIM * DIM values, component-major row-major matrices
+ */
+template<typename DataType>
+struct GMMInitialParameters {
+    std::vector<DataType> weight;
+    std::vector<DataType> mean;
+    std::vector<DataType> coVariance;
+};
 
 
 
@@ -55,6 +72,8 @@ private:
     std::vector<DataType> weightInit_;
     std::vector<DataType> meanInit_;
     std::vector<DataType> coVarianceInit_;
+    GMMInitialParameters<DataType> userGMMInitialParameters_;
+    bool hasUserGMMInitialParameters_ = false;
     int convergStepLastGMM_;
     int simulationStepLast_;
 
@@ -64,16 +83,61 @@ private:
     std::uniform_real_distribution<DataType>    uniTheta_;
     std::normal_distribution<DataType>          normDist_;
 
+    __host__ void validateGMMInitialParameters(const GMMInitialParameters<DataType>& initialParameters) const
+    {
+        if(static_cast<int>(initialParameters.weight.size()) != numComponentGMM_){
+            throw std::invalid_argument("GMMInitialParameters::weight must contain numComponents values");
+        }
+        if(static_cast<int>(initialParameters.mean.size()) != numComponentGMM_ * DIM){
+            throw std::invalid_argument("GMMInitialParameters::mean must contain numComponents * DIM values");
+        }
+        if(static_cast<int>(initialParameters.coVariance.size()) != numComponentGMM_ * DIM * DIM){
+            throw std::invalid_argument("GMMInitialParameters::coVariance must contain numComponents * DIM * DIM values");
+        }
+
+        for(const auto& weight : initialParameters.weight){
+            if(!std::isfinite(weight) || weight <= DataType(0)){
+                throw std::invalid_argument("GMMInitialParameters::weight values must be finite and positive");
+            }
+        }
+        for(const auto& mean : initialParameters.mean){
+            if(!std::isfinite(mean)){
+                throw std::invalid_argument("GMMInitialParameters::mean values must be finite");
+            }
+        }
+        for(const auto& coVariance : initialParameters.coVariance){
+            if(!std::isfinite(coVariance)){
+                throw std::invalid_argument("GMMInitialParameters::coVariance values must be finite");
+            }
+        }
+    }
+
+    __host__ void loadUserGMMInitialParameters()
+    {
+        weightInit_ = userGMMInitialParameters_.weight;
+        meanInit_ = userGMMInitialParameters_.mean;
+        coVarianceInit_ = userGMMInitialParameters_.coVariance;
+    }
+
+    __host__ void updateGMMParam()
+    {
+        GMMParam_.numComponents = numComponentGMM_;
+        GMMParam_.maxIteration = maxIterationGMM_;
+        GMMParam_.threshold = thresholdGMM_;
+        GMMParam_.weightInit = weightInit_.data();
+        GMMParam_.meanInit = meanInit_.data();
+        GMMParam_.coVarianceInit = coVarianceInit_.data();
+    }
+
 public:
     /**
      * @brief Constructor for the HistGMMCompressor class
-     * @param histInitSize   initial buffer size for the histogram (should be larger than numData_)
      * @param numComponents  number of gaussians in the GMM mixture
      * @param maxIterationGMM maximum number of intenal GMM iteration 
      * @param thresholdGMM  threshold for GMM convergence
     */
-    HistGMMCompressor(const int histInitSize, const int numComponentGMM, const int maxIterationGMM, const DataType thresholdGMM ) : 
-        particleHistogram_(std::make_unique<particleHistogram::ParticleHistogram<DIM>>(histInitSize)),
+    HistGMMCompressor(const int numComponentGMM, const int maxIterationGMM, const DataType thresholdGMM ) : 
+        particleHistogram_(std::make_unique<particleHistogram::ParticleHistogram<DIM>>()),
         gmm_(std::make_unique<weightedGMM::GMM<DataType, DIM, WeightType>>() ),
         numComponentGMM_(numComponentGMM),
         maxIterationGMM_(maxIterationGMM),
@@ -85,6 +149,16 @@ public:
             weightInit_.resize(numComponentGMM_);
             meanInit_.resize(numComponentGMM_ * DIM);
             coVarianceInit_.resize(numComponentGMM_ * DIM * DIM);
+        }
+
+    /**
+     * @brief Construct a compressor with user-provided GMM initialization parameters.
+     */
+    HistGMMCompressor(const int numComponentGMM, const int maxIterationGMM, const DataType thresholdGMM,
+                      const GMMInitialParameters<DataType>& initialParameters) :
+        HistGMMCompressor(numComponentGMM, maxIterationGMM, thresholdGMM)
+        {
+            setGMMInitialParameters(initialParameters);
         }
 
     ~HistGMMCompressor() = default;
@@ -109,6 +183,24 @@ public:
 
 
     /**
+     * @brief Set user-provided GMM initialization parameters used by subsequent runCompression() calls.
+     */
+    __host__ void setGMMInitialParameters(const GMMInitialParameters<DataType>& initialParameters)
+    {
+        validateGMMInitialParameters(initialParameters);
+        userGMMInitialParameters_ = initialParameters;
+        hasUserGMMInitialParameters_ = true;
+    }
+
+    /**
+     * @brief Clear user-provided initialization and return to the compressor default initializer.
+     */
+    __host__ void clearGMMInitialParameters()
+    {
+        hasUserGMMInitialParameters_ = false;
+    }
+
+    /**
      * @brief Initialize the GMM parameters (weights, mean and covariance) before running GMM
      * this is a critical function, it must be tuned accoridg to the data to compress
      * Hint: GMM gaussians should be initialized to cover the entire data domain
@@ -116,6 +208,12 @@ public:
      */
     __host__ void setGMMInitialParameters()
     {
+        if(hasUserGMMInitialParameters_){
+            loadUserGMMInitialParameters();
+            updateGMMParam();
+            return;
+        }
+
         // maximum particle velocity
         const DataType maxVelocity = 1;
 
@@ -161,12 +259,7 @@ public:
 
         }
 
-        GMMParam_.numComponents = numComponentGMM_;
-        GMMParam_.maxIteration = maxIterationGMM_;
-        GMMParam_.threshold = thresholdGMM_;
-        GMMParam_.weightInit = weightInit_.data();
-        GMMParam_.meanInit = meanInit_.data();
-        GMMParam_.coVarianceInit = coVarianceInit_.data();        
+        updateGMMParam();
     }
 
     /**

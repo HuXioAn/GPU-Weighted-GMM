@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21) # HIP requires 3.21
+cmake_minimum_required(VERSION 3.21)
 project(GMMTest LANGUAGES CXX)
 
 include(CTest)
@@ -11,276 +11,49 @@ cmake_policy(SET CMP0042 NEW)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-
-option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
-
-
-if(NOT HIP_ON) # CUDA
-    enable_language(CUDA)
-    message(STATUS "Using CUDA environment.")
-    set(CMAKE_CUDA_STANDARD 17)
-    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
-
-elseif(HIP_ON) # HIP
-    find_package(HIP REQUIRED)
-    enable_language(HIP)
-    message(STATUS "Using HIP environment.")
-    set(DEVICE_LANGUAGE HIP)
-    set(DEVICE_COMPILER hipcc)
-
-endif()
-
-
-set(common_include_path ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-
-if(NOT HIP_ON)
-  list(APPEND common_include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+# Language must be enabled here (top-level project) before add_subdirectory.
+option(HIP_ON "Use HIP backend instead of CUDA" OFF)
+if(HIP_ON)
+	find_package(HIP REQUIRED)
+	enable_language(HIP)
 else()
-  list(APPEND common_include_path ${CMAKE_CURRENT_SOURCE_DIR}/../hipifly)
+	enable_language(CUDA)
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
-
-# testHistogram 3D
-
-set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
-
-file(
-  GLOB
-  testHistogram3D_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram3D.cu
-)
-
-add_executable(testHistogram3D ${testHistogram3D_SRC})
-target_include_directories(testHistogram3D PRIVATE ${common_include_path} ${test_histogram_root})
-if(HIP_ON)
-    target_compile_definitions(testHistogram3D PUBLIC HIPIFLY)
-endif()
-
-if(NOT HIP_ON) # CUDA
-
-  set_target_properties(testHistogram3D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testHistogram3D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testHistogram3D PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testHistogram3D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testHistogram3D PROPERTY LINK_OPTIONS -fno-lto)
-
-else() # HIP
-
-  target_link_libraries(testHistogram3D PRIVATE hip::device)
-  target_link_libraries(testHistogram3D PRIVATE hip::host)
-
-  target_compile_options(testHistogram3D PUBLIC -fgpu-rdc)
-  target_link_options(testHistogram3D PUBLIC  -fgpu-rdc --hip-link)
-
-  set_property(TARGET testHistogram3D PROPERTY HIP_ARCHITECTURES gfx90a)
-
-endif()
-
-
-add_test(
-  NAME testHistogram3D
-  COMMAND testHistogram3D
-)
-set_tests_properties(testHistogram3D PROPERTIES TIMEOUT 10)
-
-
-
-# testHistogram 2D
-
-set(test_histogram_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram)
-
-file(
-  GLOB
-  testHistogram2D_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testHistogram2D.cu
-)
-
-add_executable(testHistogram2D ${testHistogram2D_SRC})
-target_include_directories(testHistogram2D PRIVATE ${common_include_path} ${test_histogram_root})
-if(HIP_ON)
-    target_compile_definitions(testHistogram2D PUBLIC HIPIFLY)
-endif()
-
-if(NOT HIP_ON) # CUDA
-
-  set_target_properties(testHistogram2D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testHistogram2D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testHistogram2D PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testHistogram2D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testHistogram2D PROPERTY LINK_OPTIONS -fno-lto)
-
-else() # HIP
-
-  target_link_libraries(testHistogram2D PRIVATE hip::device)
-  target_link_libraries(testHistogram2D PRIVATE hip::host)
-
-  target_compile_options(testHistogram2D PUBLIC -fgpu-rdc)
-  target_link_options(testHistogram2D PUBLIC  -fgpu-rdc --hip-link)
-
-  set_property(TARGET testHistogram2D PROPERTY HIP_ARCHITECTURES gfx90a)
-
-endif()
-
-
-add_test(
-  NAME testHistogram2D
-  COMMAND testHistogram2D
-)
-set_tests_properties(testHistogram2D PROPERTIES TIMEOUT 10)
-
-
-# testGMM
-
-set(test_gmm_root ${CMAKE_CURRENT_SOURCE_DIR}/../weighted-GMM)
-
-file(
-  GLOB
-  testGMM_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testGMM.cu
-)
-
-add_executable(testGMM ${testGMM_SRC})
-target_include_directories(testGMM PRIVATE ${common_include_path} ${test_gmm_root})
-if(HIP_ON)
-    target_compile_definitions(testGMM PUBLIC HIPIFLY)
-endif()
-
-
-if(NOT HIP_ON) # CUDA
-
-  set_target_properties(testGMM PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testGMM PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testGMM PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testGMM PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testGMM PROPERTY LINK_OPTIONS -fno-lto)
-
-else() # HIP
-
-  target_link_libraries(testGMM PRIVATE hip::device)
-  target_link_libraries(testGMM PRIVATE hip::host)
-
-  target_compile_options(testGMM PUBLIC -fgpu-rdc)
-  target_link_options(testGMM PUBLIC  -fgpu-rdc --hip-link)
-
-  set_property(TARGET testGMM PROPERTY HIP_ARCHITECTURES gfx90a)
-
-endif()
-
-
-add_test(
-  NAME testGMM
-  COMMAND testGMM
-)
-set_tests_properties(testGMM PROPERTIES TIMEOUT 10)
-
-
-
-# testCompressor 2D
-
-set(test_compressor_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram-GMM-compressor)
-
-file(
-  GLOB
-  testCompressor2D_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor2D.cu
-)
-
-add_executable(testCompressor2D ${testCompressor2D_SRC})
-target_include_directories(testCompressor2D PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
-if(HIP_ON)
-    target_compile_definitions(testCompressor2D PUBLIC HIPIFLY)
-endif()
-
-
-if(NOT HIP_ON) # CUDA
-
-  set_target_properties(testCompressor2D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testCompressor2D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testCompressor2D PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testCompressor2D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testCompressor2D PROPERTY LINK_OPTIONS -fno-lto)
-
-else() # HIP
-
-  target_link_libraries(testCompressor2D PRIVATE hip::device)
-  target_link_libraries(testCompressor2D PRIVATE hip::host)
-
-  target_compile_options(testCompressor2D PUBLIC -fgpu-rdc)
-  target_link_options(testCompressor2D PUBLIC  -fgpu-rdc --hip-link)
-
-  set_property(TARGET testCompressor2D PROPERTY HIP_ARCHITECTURES gfx90a)
-
-endif()
-
-
-add_test(
-  NAME testCompressor2D
-  COMMAND testCompressor2D
-)
-set_tests_properties(testCompressor2D PROPERTIES TIMEOUT 10)
-
-
-
-# testCompressor 3D
-
-set(test_compressor_root ${CMAKE_CURRENT_SOURCE_DIR}/../histogram-GMM-compressor)
-
-file(
-  GLOB
-  testCompressor3D_SRC
-  ${CMAKE_CURRENT_SOURCE_DIR}/testCompressor3D.cu
-)
-
-add_executable(testCompressor3D ${testCompressor3D_SRC})
-target_include_directories(testCompressor3D PRIVATE ${common_include_path} ${test_gmm_root} ${test_histogram_root} ${test_compressor_root})
-if(HIP_ON)
-    target_compile_definitions(testCompressor3D PUBLIC HIPIFLY)
-endif()
-
-
-if(NOT HIP_ON) # CUDA
-
-  set_target_properties(testCompressor3D PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET testCompressor3D PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET testCompressor3D PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET testCompressor3D PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET testCompressor3D PROPERTY LINK_OPTIONS -fno-lto)
-
-else() # HIP
-
-  target_link_libraries(testCompressor3D PRIVATE hip::device)
-  target_link_libraries(testCompressor3D PRIVATE hip::host)
-
-  target_compile_options(testCompressor3D PUBLIC -fgpu-rdc)
-  target_link_options(testCompressor3D PUBLIC  -fgpu-rdc --hip-link)
-
-  set_property(TARGET testCompressor3D PROPERTY HIP_ARCHITECTURES gfx90a)
-
-endif()
-
-
-add_test(
-  NAME testCompressor3D
-  COMMAND testCompressor3D
-)
-set_tests_properties(testCompressor3D PROPERTIES TIMEOUT 10)
-
-
-# # testPipeline
-
-# add_executable(testPipeline ${testHistogram3D_SRC} ${testCompressor_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/testPipeline.cpp)
-# target_include_directories(testPipeline PRIVATE ${common_include_path} ${test_histogram_root} ${test_gmm_root})
-# if(HIP_ON)
-#     target_compile_definitions(testPipeline PUBLIC HIPIFLY)
-# endif()
-
-# add_test(
-#   NAME testPipeline
-#   COMMAND testPipeline
-# )
-# set_tests_properties(testPipeline PROPERTIES TIMEOUT 10)
+set(GPUWeightedGMM_DIR
+	"${CMAKE_CURRENT_LIST_DIR}/.."
+	CACHE PATH
+	"Path to the GPU-Weighted-GMM source tree")
+get_filename_component(GPUWeightedGMM_DIR "${GPUWeightedGMM_DIR}" ABSOLUTE)
+
+find_package(GPUWeightedGMM REQUIRED)
+
+# ---------------------------------------------------------------------------
+# Helper: create a GPU test executable linked against gpu_weighted_gmm.
+# Includes, HIPIFLY define, HIP link/compile options all propagate from the
+# interface target; only CUDA-specific LTO suppression stays here.
+# ---------------------------------------------------------------------------
+macro(add_gmm_test target source)
+	add_executable(${target} ${source})
+	if(HIP_ON)
+		set_source_files_properties(${source} PROPERTIES LANGUAGE HIP)
+	else()
+		set_source_files_properties(${source} PROPERTIES LANGUAGE CUDA)
+		set_target_properties(${target} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+		set_property(TARGET ${target} PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+		set_property(TARGET ${target} PROPERTY LINK_OPTIONS -fno-lto)
+	endif()
+	target_link_libraries(${target} PRIVATE gpu_weighted_gmm)
+	add_test(NAME ${target} COMMAND ${target})
+	set_tests_properties(${target} PROPERTIES TIMEOUT 10)
+endmacro()
+
+add_gmm_test(testHistogram3D  testHistogram3D.cu)
+add_gmm_test(testHistogram2D  testHistogram2D.cu)
+add_gmm_test(testGMM          testGMM.cu)
+add_gmm_test(testCompressor2D testCompressor2D.cu)
+add_gmm_test(testCompressor3D testCompressor3D.cu)
 
 
 

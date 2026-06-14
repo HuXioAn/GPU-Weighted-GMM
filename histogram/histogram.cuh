@@ -268,10 +268,17 @@ private:
 
     std::array<int, DIM> binThisDim = DefaultBins<DIM>::value;
 
+    static constexpr int configuredBinCount()
+    {
+        int bufferSize = DefaultBins<DIM>::value[0] * DefaultBins<DIM>::value[1];
+        if constexpr(DIM == 3){ bufferSize *= DefaultBins<DIM>::value[2]; }
+        return bufferSize;
+    }
+
     int reductionTempArraySize = 0;
-    histogramTypeIn* reductionTempArrayCUDA;
-    histogramTypeIn* reductionMinResultCUDA;
-    histogramTypeIn* reductionMaxResultCUDA;
+    histogramTypeIn* reductionTempArrayCUDA = nullptr;
+    histogramTypeIn* reductionMinResultCUDA = nullptr;
+    histogramTypeIn* reductionMaxResultCUDA = nullptr;
 
     histogramTypeIn minArray[DIM];
     histogramTypeIn maxArray[DIM];
@@ -379,23 +386,11 @@ private:
 public:
 
     /**
-     * @param initSize the initial size of the histogram buffer, in elements
-     * @param path the path to store the output file, directory
+     * @brief Construct a histogram sized from the compile-time histogram configuration.
      */
-    ParticleHistogram<DIM>(const int initSize) {
+    ParticleHistogram<DIM>() {
 
-        auto bufferSize = binThisDim[0] * binThisDim[1];
-        if constexpr(DIM == 3){bufferSize *= binThisDim[2];}
-        int allocSize = initSize;
-        if(initSize < bufferSize){
-            if constexpr (DIM == 2){
-                std::cerr << "[!]Histogram initial size is too small: " << initSize << " vs " << binThisDim[0] << "x" << binThisDim[1] << std::endl;
-            } 
-            else{
-                std::cerr << "[!]Histogram initial size is too small: " << initSize << " vs " << binThisDim[0] << "x" << binThisDim[1] << "x" << binThisDim[0] << std::endl;
-            }
-            allocSize = bufferSize;
-        }
+        const int allocSize = configuredBinCount();
 
         histogramHostPtr = newHostPinnedObject<particleHistogramCUDA>(allocSize);
         cudaErrChk(cudaMalloc((void**)&histogramCUDAPtr, sizeof(particleHistogramCUDA)));

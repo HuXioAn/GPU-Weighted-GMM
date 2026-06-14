@@ -152,7 +152,7 @@ int main() {
     const int nComponentGMM = NGaussians;
     const int maxIterGMM = 200;
     const DataType thresholdGMM = 1e-3;
-    histogramGMMCompressor::HistGMMCompressor<DataType,2,true,cudaTypeSingle> compressor(histogramSize2D,nComponentGMM,maxIterGMM,thresholdGMM);
+    histogramGMMCompressor::HistGMMCompressor<DataType,2,true,cudaTypeSingle> compressor(nComponentGMM,maxIterGMM,thresholdGMM);
     
     // run compression pipeline hist+GMM
     compressor.runCompression(uPtr, vPtr, qPtr, nSample * NGaussians , 0, 0);

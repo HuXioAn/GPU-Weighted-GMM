@@ -24,8 +24,8 @@ namespace particleHistogram::config {
     inline constexpr int PARTICLE_HISTOGRAM_MAX_SMEM = 48 * 1024; // 48KB
 
     inline constexpr bool HISTOGRAM_FIXED_RANGE = true; 
-    inline constexpr cudaCommonType MIN_VELOCITY_HIST_E = -1.6;
-    inline constexpr cudaCommonType MAX_VELOCITY_HIST_E = 1.6;
+    inline constexpr cudaCommonType MIN_VELOCITY_HIST_E = -1.0;
+    inline constexpr cudaCommonType MAX_VELOCITY_HIST_E = 1.0;
     inline constexpr cudaCommonType MIN_VELOCITY_HIST_I = -0.09;
     inline constexpr cudaCommonType MAX_VELOCITY_HIST_I = 0.09;
 

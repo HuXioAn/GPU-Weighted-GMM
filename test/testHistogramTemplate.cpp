@@ -5,8 +5,8 @@
 
 #include "histogram.cuh"
 
-using namespace particleHistogramNS;
-using namespace particleHistogramNS::config;
+using namespace particleHistogram;
+using namespace particleHistogram::config;
 
 constexpr int nop = 5000000;
 
@@ -15,7 +15,7 @@ int main(){
     int histogramSize3D = PARTICLE_HISTOGRAM3D_SIZE;
 
     // histogram 3D test 
-    particleHistogram<3> histogram(histogramSize3D);
+    ParticleHistogram<3> histogram;
 
     // fill the array with random data
     std::random_device rd;
